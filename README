@@ -1,0 +1,40 @@
+Plaintext - information that you wish to encrypt and protect. Human Readable.
+Ciphertext - The plaintext after it has been encrypted by your programs. 
+	- Is not human-readable, and it fact cannot be cracked, if the OTP system is used correctly.
+Key - The random sequence of characters that will be used to convert plaintext to ciphertext, and back again/
+	- It must not be re-used, or else the encryption is in danger of being broken.
+
+To use this program:
+1. Compile the source code by giving execution rights to compileall
+	- syntax: chmod u+x compileall
+	- syntax: ./compileall
+
+2. Generate a keygen to encrypt/decrypt messages sent between the server and client
+	- syntax: ./keygen 256 > mykey
+
+3. Start the chat server in the background to encrypt messages
+	- syntax: ./otp_enc_d 57171 &
+
+4. Start the chat server in the background to decrypt messages
+	- syntax: ./otp_dec_d 57172 &
+
+5. Encrypt the message
+	- syntax: ./otp_enc plaintext1 mykey 57171
+	- Alternate syntax: ./otp_enc plaintext1 mykey 57171 > myciphertext
+	- Alternate syntax: ./otp_enc plaintext1 mykey 57171 > myciphertext &
+
+6. Decrypt the message
+	- syntax: ./otp_dec myciphertext mykey 57172 > myplaintext
+
+IDEAS:
+	 - Create an char array of size 26 (0 - 25) for the 'key'
+	 - Fill this 'key' array with random, but unique characters
+	 - Get the numerical value of the current letter of the ciphertext and store it
+	 - If the first char of the ciphertext is 'A' or 'a', then the numerical value of 'a' or 'A' is 0.
+	 	- The numerical value of ' ' ( a space ) is 27.
+	 - Use that numerical value as an index into array 'key' and return the random char  (aka key letter) that's stored there
+	 - Get the numerical value of the 'key letter' received by using the key on the ciphertext and store it
+	 - Add the two numerical representations of the ciphertext + key and see:
+	 	- if the sum is > 26, take the remainder, after subtraction of 26 is taken and store it as
+	 	- Return the numerical value of the key + ciphertext char 
+	 - Use the numerical value returned and get the regular char representation of that #
