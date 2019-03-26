@@ -1,6 +1,3 @@
 #!/bin/bash
-gcc -o otp_enc_d otp_enc_d.c otp_functions.c otp_functions.h
-gcc -o otp_enc otp_enc.c otp_functions.c otp_functions.h
-gcc -o otp_dec_d otp_dec_d.c otp_functions.c otp_functions.h
-gcc -o otp_dec otp_dec.c otp_functions.c otp_functions.h
-gcc -o keygen keygen.c
+gcc -o chatclient chatclient.c chat_common.c chat_common.h
+gcc -o chatserver chatserver.c chat_common.c chat_common.h

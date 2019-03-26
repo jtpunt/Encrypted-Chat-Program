@@ -5,7 +5,7 @@
 #include <stdio.h>
 #include <sys/types.h>
 
-#define BUFFER_SIZE 65536	
+#define BUFFER_SIZE 500
 #define MAX_CHARS 27
 
 int getNumRepr(char letter);

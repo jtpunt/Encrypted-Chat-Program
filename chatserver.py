@@ -17,21 +17,24 @@ def modulo(a, b):
 
 def getCharRepr(pos):
     if pos >= 0 and pos < 26:
-        return chr(pos + 65)
+        return chr(pos + 97)
     else:
         return ' '
 
 def decrypt(ciphertext, key):
     counter = 0
+    difference = -1
     for char in ciphertext:
         if ord(char) == 0:
             break;
+        charPos = ord(char)
+        keyPos = ord(key[counter]) 
+        decryptPos = charPos - keyPos % 27
+        print(charPos)
+        print(keyPos)
+        print(decryptPos)
+        print(chr(decryptPos))
         counter = counter + 1
-        decryptPos = modulo(ord(char) - ord(key[counter]), 27)
-        # print(ord(char)) # returns the number representation of the ASCII char
-        # print(ord(key[counter]))
-        # print(decryptPos)
-        print(getCharRepr(decryptPos))
     
 def main():
     if len(sys.argv[1:]) != 1:
@@ -62,7 +65,7 @@ def main():
                 decrypt(client_msg, key)
                 # print(client_msg.split('> ')[1]);
                 if client_msg and "Exiting" not in client_msg:
-                    print(client_msg)
+                    print(client_msg) 
                     print(server_prompt, end='')
                     server_input = input() # get input from the user
                     if server_input == "\quit":

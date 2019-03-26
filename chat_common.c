@@ -1,18 +1,17 @@
-// Name: Jonathan Perry
-// Class: CS 344 - Operating Systems
-// Project OTP
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
 #include <arpa/inet.h>
 #include <assert.h>
-#include "otp_functions.h"
+#include "chat_common.h"
 // This function receives a character literal and returns it nth position in the alphabaet. 
 // etc, 'A' = 0, 'B' = 1, ' ' (a space) = 27 and so on.
 int getNumRepr(char letter){
 	int pos;
 	if (letter >= 'A' && letter <= 'Z'){
   		pos = letter - 'A';
+	}else if(letter >= 'a' && letter <= 'z'){
+		pos = letter - 'a';
 	}
  	else{
  		pos = 26;
@@ -47,6 +46,7 @@ int validateInput(char *input){
 // This function is used to send data between the client and server. If the exitValue is not -1,
 // then the function will call exit with the exitValue argument passed in.
 void sendData(int socket, void *buffer, size_t length, int flags, char* args, int exitValue){
+	printf("sending data...\n");
 	if((send(socket, buffer, length, flags)) == 0){
 		fprintf(stderr, "Error: File %s Failed Sending Data\n", args);
 		if(exitValue != -1){
@@ -83,11 +83,16 @@ void encrypt(char* plaintext, char* key, char* ciphertext){
 // Converting ciphertext to plaintext is done by subtracting the position of each ciphertext character to the position of each key character,
 // then take that result modulo 27 to return a valid position within the alphabet.
 void decrypt(char* ciphertext, char* key, char *plaintext){
+	printf("decrypting data...\n");
 	int i;
 	for(i = 0; i < strlen(ciphertext); i++){
 		int ciphertextCharPos = getNumRepr(ciphertext[i]); // get the position of the encrypted ciphertext letter in the alphabet
 		int keyCharPos = getNumRepr(key[i]); // get the position of the current key char value
 		int decryptedCharPos = modulo(ciphertextCharPos - keyCharPos, MAX_CHARS);
+		printf("ciphertextCharPos: %d %c\n", ciphertextCharPos, getCharRepr(ciphertextCharPos));
+		printf("keyCharPos: %d %c\n", keyCharPos, getCharRepr(keyCharPos));
+		printf("decryptedCharPos: %d %c\n", decryptedCharPos, getCharRepr(decryptedCharPos));
 		plaintext[i] = getCharRepr(decryptedCharPos);
+		printf("char: %c\n", plaintext[i]);
 	}
 }
