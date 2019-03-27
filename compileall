@@ -1,3 +1,3 @@
 #!/bin/bash
-gcc -o chatclient chatclient.c chat_common.c chat_common.h
+gcc -o chatclient keygen.c keygen.h chatclient.c chat_common.c chat_common.h
 gcc -o chatserver chatserver.c chat_common.c chat_common.h

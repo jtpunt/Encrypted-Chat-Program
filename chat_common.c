@@ -4,30 +4,7 @@
 #include <arpa/inet.h>
 #include <assert.h>
 #include "chat_common.h"
-// This function receives a character literal and returns it nth position in the alphabaet. 
-// etc, 'A' = 0, 'B' = 1, ' ' (a space) = 27 and so on.
-int getNumRepr(char letter){
-	int pos;
-	if (letter >= 'A' && letter <= 'Z'){
-  		pos = letter - 'A';
-	}else if(letter >= 'a' && letter <= 'z'){
-		pos = letter - 'a';
-	}
- 	else{
- 		pos = 26;
- 	}
- 	return pos;
-}
-// Position represents the nth character in the alphabet. etc, 'A' = 0, 'B' = 1, ' ' (a space) = 27 and so on.
-// This function receives an ASCII character code and returns its character literal.
-char getCharRepr(int pos){
-	if(pos >= 0 && pos < MAX_CHARS - 1){ // all 26 characters of the alphabet
-		return pos + 65; // converts into ASCII code and returns the character literal of that ASCII code
-	}
-	else{ // pos is equal to 27, which is a space character
-		return ' ';
-	}
-}
+
 // This is a function helper to assist with modulo arithmetic operations.
 int modulo(int a, int b){
     int r = a % b;
@@ -64,35 +41,44 @@ void recvData(int socket, void *buffer, size_t length, int flags, char* args, in
 		}
 	}
 }
-// Position represents the nth character in the alphabet. etc, 'A' = 0, 'B' = 1, ' ' (a space) = 27 and so on.
+// Position represents the nth character in the ASCII table of decimal values.
 // This function receives both plaintext and a key to encrypt the plaintext into ciphertext.
-// Converting plaintext to ciphertext is done by adding the position of each plaintext letter to the position of each 
-// key letter, then take that result modulo 27 to return a valid position within the alphabet.
+// Converting plaintext to ciphertext is done by adding the position of each plaintext char to the position of each 
+// key char, then taking that result modulo 127 to return a valid char position within the ASCII table of decimal values.
+// Finally, a 2nd level of encryption is performed on the original ciphertext by adding the position of each ciphertext char to the position of each
+// key char, then taking that result modulu 127 to return a valid char position within the ASCII table of decimal values.
 void encrypt(char* plaintext, char* key, char* ciphertext){
 	char characters[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZ ";
 	int i;
 	for(i = 0; i < strlen(plaintext); i++){
-		int plaintextCharPos = getNumRepr(plaintext[i]); // get the position of current plaintext letter in the alphabet. ETC 'A' = position 0, 'B' = position 1
-		int keyCharPos = getNumRepr(key[i]); // get the position of the encrypted letter in the alphabet, same as above
-		int ciphertextCharPos = modulo(plaintextCharPos + keyCharPos, MAX_CHARS); 
-		ciphertext[i] = getCharRepr(ciphertextCharPos); // assign the encrypted char valueps
+		int plaintextCharPos = (int)(plaintext[i]); // get the ASCII position of current plaintext letter 
+		int keyCharPos = (int)(key[i % strlen(key)]); // get the ASCII position of the key character
+		int ciphertextCharPos = modulo(plaintextCharPos + keyCharPos, MAX_ASCII_CHARS); // get the ASCII position of the encrypted ciphertext letter
+		ciphertextCharPos = modulo(ciphertextCharPos + keyCharPos, MAX_ASCII_CHARS); // get the ASCII position of the double encrypted ciphertext letter
+		// printf("plaintextCharPos: %d %c\n", plaintextCharPos, getCharRepr(plaintextCharPos));
+		// printf("keyCharPos: %d %c\n", keyCharPos, getCharRepr(keyCharPos));
+		// printf("cipherCharPos: %d %c\n\n", ciphertextCharPos, getCharRepr(ciphertextCharPos));
+		ciphertext[i] = (char)(ciphertextCharPos); // assign the encrypted char valueps
 	}
 }
-// Position represents the nth character in the alphabet. etc, 'A' = 0, 'B' = 1, ' ' (a space) = 27 and so on.
+// Position represents the nth character in the ASCII table of decimal values.
 // This function receives both ciphertext and a key to decrypt the ciphertext into plaintext.
-// Converting ciphertext to plaintext is done by subtracting the position of each ciphertext character to the position of each key character,
-// then take that result modulo 27 to return a valid position within the alphabet.
+// Converting ciphertext to plaintext is done by subtracting the position of each ciphertext character by the position of each key character,
+// then take that result modulo 127 to return a valid position within the ASCII table of decimal values.
+// Finally, a 2nd level of decryption if performed on the original plaintext by subtracting the position of each ciphertext char by the position of each
+// key char, then taking that result modulu 127 to return a valid char position within the ASCII table of decimal values.
 void decrypt(char* ciphertext, char* key, char *plaintext){
 	printf("decrypting data...\n");
 	int i;
 	for(i = 0; i < strlen(ciphertext); i++){
-		int ciphertextCharPos = getNumRepr(ciphertext[i]); // get the position of the encrypted ciphertext letter in the alphabet
-		int keyCharPos = getNumRepr(key[i]); // get the position of the current key char value
-		int decryptedCharPos = modulo(ciphertextCharPos - keyCharPos, MAX_CHARS);
-		printf("ciphertextCharPos: %d %c\n", ciphertextCharPos, getCharRepr(ciphertextCharPos));
-		printf("keyCharPos: %d %c\n", keyCharPos, getCharRepr(keyCharPos));
-		printf("decryptedCharPos: %d %c\n", decryptedCharPos, getCharRepr(decryptedCharPos));
-		plaintext[i] = getCharRepr(decryptedCharPos);
-		printf("char: %c\n", plaintext[i]);
+		int ciphertextCharPos = (int)(ciphertext[i]); // get the ASCII position of the double encrypted ciphertext letter
+		int keyCharPos = (int)(key[i % strlen(key)]); // get the ASCII position of the current key char value
+		// get the ASCII position from decrypting the double encrypted ciphertext letter to get the final encrypted ciphertext char
+		ciphertextCharPos = modulo(ciphertextCharPos - keyCharPos, MAX_ASCII_CHARS); 
+		int decryptedCharPos = modulo(ciphertextCharPos - keyCharPos, MAX_ASCII_CHARS); // get the ASCII position of the plaintext char
+		// printf("ciphertextCharPos: %d %c\n", ciphertextCharPos, getCharRepr(ciphertextCharPos));
+		// printf("keyCharPos: %d %c\n", keyCharPos, getCharRepr(keyCharPos));
+		// printf("decryptedCharPos: %d %c\n\n", decryptedCharPos, getCharRepr(decryptedCharPos));
+		plaintext[i] = (char)(decryptedCharPos);
 	}
 }

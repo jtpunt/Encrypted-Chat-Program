@@ -7,9 +7,8 @@
 
 #define BUFFER_SIZE 500
 #define MAX_CHARS 27
+#define MAX_ASCII_CHARS 127
 
-int getNumRepr(char letter);
-char getCharRepr(int num);
 int modulo(int a, int b);
 int validateInput(char *string);
 void sendData(int socket, void *buffer, size_t length, int flags, char* args, int exitValue);

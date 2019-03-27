@@ -15,6 +15,7 @@
 #include <string.h>
 #include <time.h>
 #include <netdb.h>
+#include "keygen.h"
 #include "chat_common.h"
 #define KEY_SIZE 256
 #define MAX_NAME_LENGTH 10
@@ -57,33 +58,7 @@ void connectSocket(int listenSocketFD, struct sockaddr_in *servAddr, int portNum
 		exit(2);
 	}
 }
-// This function sends random characters in the alphabet (including a space character) plus a newline character to stdout.
-void fillKeyTable(int length, char* key){
-	int idx, i;
-	for (i = 0; i < length; i++){
-		key[i] = getCharRepr(0 + rand() % MAX_CHARS);
-		// strcpy(&key[i], c);
-		// fprintf(stdout, "%c", getCharRepr(0 + rand() % MAX_CHARS)); // prints a random alphabetical character or space to stdout
-	}
-	key[length] = '\n';
-	// strcpy(key[KEY_SIZE], "\n");
-	// fprintf(stdout, "\n"); // add a newline character to the end of the key
-	printf("Done\n");
-}
-// void encrypt(char* plaintext, char* key, char* ciphertext){
-// 	char characters[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZ ";
-// 	int i;
-// 	for(i = 0; i < strlen(plaintext); i++){
-// 		if(plaintext[i] == '\0'){
-// 			ciphertext[i] = plaintext[i];
-// 		}else{
-// 			int plaintextCharPos = getNumRepr(plaintext[i]); // get the position of current plaintext letter in the alphabet. ETC 'A' = position 0, 'B' = position 1
-// 			int keyCharPos = getNumRepr(key[i]); // get the position of the encrypted letter in the alphabet, same as above
-// 			int ciphertextCharPos = modulo(plaintextCharPos + keyCharPos, MAX_CHARS); 
-// 			ciphertext[i] = getCharRepr(ciphertextCharPos); // assign the encrypted char valueps
-// 		}
-// 	}
-// }
+
 int main(int argc, char **argv){
 	char client_name[MAX_NAME_LENGTH], server_name[MAX_NAME_LENGTH], client_input[BUFFER_SIZE], client_msg[BUFFER_SIZE], server_msg[BUFFER_SIZE];
 	char enc_client_msg[BUFFER_SIZE], key[KEY_SIZE];
@@ -122,7 +97,7 @@ int main(int argc, char **argv){
 	fgets(client_name, MAX_NAME_LENGTH, stdin);
 	client_name[strlen(client_name)-1] = '\0';
 	connectSocket(listenSocketFD, servAddr, portNumber);
-	fillKeyTable(KEY_SIZE, key);
+	fillKeyTable(95, key);
 	sendData(listenSocketFD, &key, sizeof(key), 0, argv[0], 1); // send the key
 	printf("key received\n");
 	printf("%s\n", key);
@@ -139,7 +114,7 @@ int main(int argc, char **argv){
 			printf("Exiting..\n");
 			break; // close the 
 		}
-		encrypt(client_input, key, enc_client_msg);
+		encrypt(client_msg, key, enc_client_msg);
 		printf("%s\n", enc_client_msg);
 		sendData(listenSocketFD, &enc_client_msg, sizeof(enc_client_msg), 0, argv[0], 1); // sends the users message to the chat server
 		// do{
