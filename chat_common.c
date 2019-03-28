@@ -4,7 +4,13 @@
 #include <arpa/inet.h>
 #include <assert.h>
 #include "chat_common.h"
-
+// Prints output to the console and then exits the program if the stdin/stdout redirection was successful
+void checkRedir(int redirResult, char* fileName){
+	if (redirResult == -1){ // was the redirection successful?
+		fprintf(stderr, "cannot open %s for input\n", fileName);
+		exit(EXIT_FAILURE);
+	}
+}
 // This is a function helper to assist with modulo arithmetic operations.
 int modulo(int a, int b){
     int r = a % b;
