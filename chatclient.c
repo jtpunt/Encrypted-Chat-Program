@@ -100,15 +100,15 @@ int main(int argc, char **argv){
 	connectSocket(listenSocketFD, servAddr, portNumber);
 	fillKeyTable(95, key);
 	sendData(listenSocketFD, &key, sizeof(key), 0, argv[0], 1); // send the key
-	printf("key received\n");
-	printf("%s\n", key);
+	// printf("key received\n");
+	// printf("%s\n", key);
 	while(1){
 		while(1){
 			if(spawnPid = fork() == 0){ // fork from this process - child process
 				do{
 					recvData(listenSocketFD, &server_msg, sizeof(server_msg), MSG_WAITALL, argv[0], -1); // receives the ciphertext from otp_dec
 				}while(server_msg[0] == '\0'); // keep looping until we receive a message sent by the chat server
-				printf("%s\n", server_msg);
+				printf("\r%s\n", server_msg);
 				if(!strcmp(server_msg, "Server has closed the connection")){
 					break; // exit out of the loop to close the socket
 				}
@@ -130,7 +130,7 @@ int main(int argc, char **argv){
 					break; // close the 
 				}
 				encrypt(client_msg, key, enc_client_msg);
-				printf("%s\n", enc_client_msg);
+				// printf("%s\n", enc_client_msg);
 				sendData(listenSocketFD, &enc_client_msg, sizeof(enc_client_msg), 0, argv[0], 1); // sends the users message to the chat server
 			}
 		}

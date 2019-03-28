@@ -77,7 +77,7 @@ int main(int argc, char **argv){
 						recvData(establishedConnectionFD, &ciphertext, sizeof(ciphertext), MSG_WAITALL, argv[0], -1); // receives the ciphertext from otp_dec
 					}while(ciphertext[0] == '\0'); // keep looping until we receive a message sent by the chat server
 					decrypt(ciphertext, key, plaintext); // convert the ciphertext to plaintext
-					printf("%s\n", plaintext);
+					printf("\r%s\n", plaintext);
 				}else if(spawnPid1 == -1){ // did the fork fail?
 					perror("fork error");
 					exit(EXIT_FAILURE);

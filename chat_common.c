@@ -29,7 +29,6 @@ int validateInput(char *input){
 // This function is used to send data between the client and server. If the exitValue is not -1,
 // then the function will call exit with the exitValue argument passed in.
 void sendData(int socket, void *buffer, size_t length, int flags, char* args, int exitValue){
-	printf("sending data...\n");
 	if((send(socket, buffer, length, flags)) == 0){
 		fprintf(stderr, "Error: File %s Failed Sending Data\n", args);
 		if(exitValue != -1){
@@ -74,7 +73,6 @@ void encrypt(char* plaintext, char* key, char* ciphertext){
 // Finally, a 2nd level of decryption if performed on the original plaintext by subtracting the position of each ciphertext char by the position of each
 // key char, then taking that result modulu 127 to return a valid char position within the ASCII table of decimal values.
 void decrypt(char* ciphertext, char* key, char *plaintext){
-	printf("decrypting data...\n");
 	int i;
 	for(i = 0; i < strlen(ciphertext); i++){
 		int ciphertextCharPos = (int)(ciphertext[i]); // get the ASCII position of the double encrypted ciphertext letter
