@@ -102,39 +102,76 @@ int main(int argc, char **argv){
 	sendData(listenSocketFD, &key, sizeof(key), 0, argv[0], 1); // send the key
 	// printf("key received\n");
 	// printf("%s\n", key);
-	while(1){
+	if(spawnPid = fork() == 0){ // fork from this process - child process
 		while(1){
-			if(spawnPid = fork() == 0){ // fork from this process - child process
-				do{
-					recvData(listenSocketFD, &server_msg, sizeof(server_msg), MSG_WAITALL, argv[0], -1); // receives the ciphertext from otp_dec
-				}while(server_msg[0] == '\0'); // keep looping until we receive a message sent by the chat server
-				printf("\r%s\n", server_msg);
-				if(!strcmp(server_msg, "Server has closed the connection")){
-					break; // exit out of the loop to close the socket
-				}
-			}else if(spawnPid == -1){ // did the fork fail?
-				perror("fork error");
-				exit(EXIT_FAILURE);
-			}
-			else{ // parent process
-				printf("%s> ", client_name);
-				fgets(client_input, BUFFER_SIZE, stdin);
-				client_input[strlen(client_input) - 1] = '\0';
-				strcpy(client_msg, client_name); // 'client_name'
-				strcat(client_msg, "> "); // 'cleint_name> '
-				strcat(client_msg, client_input); // 'client_name> client_input'
-				if(!strcmp(client_input, "\\quit")){ // Did the client user enter in '\quit'?
-					char str[] = "Exiting";
-					sendData(listenSocketFD, &str, sizeof(str), 0, argv[0], 1); // message the chat server so it closes its socket with the client
-					printf("Exiting..\n");
-					break; // close the 
-				}
-				encrypt(client_msg, key, enc_client_msg);
-				// printf("%s\n", enc_client_msg);
-				sendData(listenSocketFD, &enc_client_msg, sizeof(enc_client_msg), 0, argv[0], 1); // sends the users message to the chat server
+			do{
+				recvData(listenSocketFD, &server_msg, sizeof(server_msg), MSG_WAITALL, argv[0], -1); // receives the ciphertext from otp_dec
+			}while(server_msg[0] == '\0'); // keep looping until we receive a message sent by the chat server
+			printf("\r%s\n", server_msg);
+			if(!strcmp(server_msg, "Server has closed the connection")){
+				break; // exit out of the loop to close the socket
 			}
 		}
-		
+	}else if(spawnPid == -1){ // did the fork fail?
+		perror("fork error");
+		exit(EXIT_FAILURE);
+	}
+	else{ // parent process
+		while(1){
+			fflush(stdout);
+			printf("%s> ", client_name);
+			fgets(client_input, BUFFER_SIZE, stdin);
+			client_input[strlen(client_input) - 1] = '\0';
+			strcpy(client_msg, client_name); // 'client_name'
+			strcat(client_msg, "> "); // 'cleint_name> '
+			strcat(client_msg, client_input); // 'client_name> client_input'
+			if(!strcmp(client_input, "\\quit")){ // Did the client user enter in '\quit'?
+				char str[] = "Exiting";
+				sendData(listenSocketFD, &str, sizeof(str), 0, argv[0], 1); // message the chat server so it closes its socket with the client
+				printf("Exiting..\n");
+				// break; // close the 
+			}
+			encrypt(client_msg, key, enc_client_msg);
+			// printf("%s\n", enc_client_msg);
+			sendData(listenSocketFD, &enc_client_msg, sizeof(enc_client_msg), 0, argv[0], 1); // sends the users message to the chat server
+			memset(client_input, '\0', BUFFER_SIZE * sizeof(char));
+			memset(client_msg, '\0', BUFFER_SIZE * sizeof(char));
+			memset(server_msg, '\0', BUFFER_SIZE * sizeof(char));
+			memset(enc_client_msg, '\0', BUFFER_SIZE * sizeof(char));
+		}
+	}
+
+	// while(1){
+	// 	if(spawnPid = fork() == 0){ // fork from this process - child process
+	// 		do{
+	// 			recvData(listenSocketFD, &server_msg, sizeof(server_msg), MSG_WAITALL, argv[0], -1); // receives the ciphertext from otp_dec
+	// 		}while(server_msg[0] == '\0'); // keep looping until we receive a message sent by the chat server
+	// 		printf("\r%s\n", server_msg);
+	// 		if(!strcmp(server_msg, "Server has closed the connection")){
+	// 			break; // exit out of the loop to close the socket
+	// 		}
+	// 	}else if(spawnPid == -1){ // did the fork fail?
+	// 		perror("fork error");
+	// 		exit(EXIT_FAILURE);
+	// 	}
+	// 	else{ // parent process
+	// 		printf("%s> ", client_name);
+	// 		fgets(client_input, BUFFER_SIZE, stdin);
+	// 		client_input[strlen(client_input) - 1] = '\0';
+	// 		strcpy(client_msg, client_name); // 'client_name'
+	// 		strcat(client_msg, "> "); // 'cleint_name> '
+	// 		strcat(client_msg, client_input); // 'client_name> client_input'
+	// 		if(!strcmp(client_input, "\\quit")){ // Did the client user enter in '\quit'?
+	// 			char str[] = "Exiting";
+	// 			sendData(listenSocketFD, &str, sizeof(str), 0, argv[0], 1); // message the chat server so it closes its socket with the client
+	// 			printf("Exiting..\n");
+	// 			break; // close the 
+	// 		}
+	// 		encrypt(client_msg, key, enc_client_msg);
+	// 		// printf("%s\n", enc_client_msg);
+	// 		sendData(listenSocketFD, &enc_client_msg, sizeof(enc_client_msg), 0, argv[0], 1); // sends the users message to the chat server
+	// 	}
+	
 		// do{
 		// 	recvData(listenSocketFD, &server_msg, sizeof(server_msg), 0, argv[0], 1); // Receives the users message sent by the chat server
 		// }while(server_msg[0] == '\0'); // keep looping until we receive a message sent by the chat server
@@ -142,11 +179,11 @@ int main(int argc, char **argv){
 		// if(!strcmp(server_msg, "Server has closed the connection")){
 		// 	break; // exit out of the loop to close the socket
 		// }
-		memset(client_input, '\0', BUFFER_SIZE * sizeof(char));
-		memset(client_msg, '\0', BUFFER_SIZE * sizeof(char));
-		memset(server_msg, '\0', BUFFER_SIZE * sizeof(char));
-		memset(enc_client_msg, '\0', BUFFER_SIZE * sizeof(char));
-	}
+		// memset(client_input, '\0', BUFFER_SIZE * sizeof(char));
+		// memset(client_msg, '\0', BUFFER_SIZE * sizeof(char));
+		// memset(server_msg, '\0', BUFFER_SIZE * sizeof(char));
+		// memset(enc_client_msg, '\0', BUFFER_SIZE * sizeof(char));
+	// }
 
 	free(servAddr);
 	close(listenSocketFD); // Close the connection socket
