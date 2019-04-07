@@ -1,4 +1,5 @@
 // Name: Jonathan Perry
+#include <errno.h> 
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -12,14 +13,17 @@
 #include "chat_common.h"
 #define MAX_NAME_LENGTH 10
 int main(int argc, char **argv){
-	int listenSocketFD, establishedConnectionFD, portNumber;	
+	int listenSocketFD, establishedConnectionFD, portNumber, activity, max_sd;	
 	char server_name[MAX_NAME_LENGTH], server_input[BUFFER_SIZE], server_msg[BUFFER_SIZE];	
 	socklen_t sizeofClientInfo;		
 	struct sockaddr_in serverAddress, clientAddress;
 	pid_t spawnPid, spawnPid1;		
 	bool isClient, isServer = false;
 	size_t ciphertextSize, keySize;
-
+	fd_set readFDs;
+	// Watch stdin (FD 0) to see when it has input
+	FD_ZERO(&readFDs); // Zero out the set of possible read file descriptors
+	FD_SET(0, &readFDs); // Mark only FD 0 as the one we want to pay attention to
 	// Check usage & args
 	if (argc != 2){
 		fprintf(stderr, "Usage: %s listening_port\n", argv[0]);
@@ -59,7 +63,8 @@ int main(int argc, char **argv){
 		if (establishedConnectionFD < 0){
 			fprintf(stderr, "ERROR on accept\n");
 		}
-
+		FD_SET(establishedConnectionFD, &readFDs); // Mark only FD 0 as the one we want to pay attention to
+		max_sd = establishedConnectionFD;   
 		spawnPid = fork(); 
 		if (spawnPid == 0){	// child process
 			char plaintext[BUFFER_SIZE];
@@ -69,20 +74,33 @@ int main(int argc, char **argv){
 			recvData(establishedConnectionFD, &key, sizeof(key), 0, argv[0], -1); // receives the key from otp_dec
 			printf("key%s\n", key);
 			char ciphertext[BUFFER_SIZE];
-
-			while(1){
-				if(spawnPid1 = fork() == 0){ // fork from this process - child process
-					memset(ciphertext, '\0', BUFFER_SIZE * sizeof(char)); // null terminate the string
-					do{
+			if(spawnPid1 = fork() == 0){ // fork from this process - child process
+				while(1){
+					activity = select( max_sd + 1 , &readFDs , NULL , NULL , NULL); 
+					memset(ciphertext, '\0', BUFFER_SIZE * sizeof(char)); // null terminate the string  
+					if ((activity < 0) && (errno!=EINTR)){   
+		    			printf("select error");   
+		    		}   
+					if(FD_ISSET(establishedConnectionFD , &readFDs)){ 
 						recvData(establishedConnectionFD, &ciphertext, sizeof(ciphertext), MSG_WAITALL, argv[0], -1); // receives the ciphertext from otp_dec
-					}while(ciphertext[0] == '\0'); // keep looping until we receive a message sent by the chat server
-					decrypt(ciphertext, key, plaintext); // convert the ciphertext to plaintext
-					printf("\r%s\n", plaintext);
-				}else if(spawnPid1 == -1){ // did the fork fail?
-					perror("fork error");
-					exit(EXIT_FAILURE);
+						decrypt(ciphertext, key, plaintext); // convert the ciphertext to plaintext
+						printf("\r%s\n", plaintext);
+					}
+					// printf("new fork..\n");
+					// fflush(stdout);
+					// memset(ciphertext, '\0', BUFFER_SIZE * sizeof(char)); // null terminate the string
+					// do{
+					// 	recvData(establishedConnectionFD, &ciphertext, sizeof(ciphertext), MSG_WAITALL, argv[0], -1); // receives the ciphertext from otp_dec
+					// }while(ciphertext[0] == '\0'); // keep looping until we receive a message sent by the chat server
+					// decrypt(ciphertext, key, plaintext); // convert the ciphertext to plaintext
+					// printf("\r%s\n", plaintext);
 				}
-				else{ // parent process
+			}else if(spawnPid1 == -1){ // did the fork fail?
+				perror("fork error");
+				exit(EXIT_FAILURE);
+			}
+			else{ // parent process
+				while(1){
 					printf("%s> ", server_name);
 					fgets(server_input, BUFFER_SIZE, stdin);
 					server_input[strlen(server_input) - 1] = '\0';
@@ -92,6 +110,7 @@ int main(int argc, char **argv){
 					sendData(establishedConnectionFD, &server_msg, sizeof(server_msg), 0, argv[0], -1); // sends the plaintext back to otp_dec
 				}
 			}
+			// }
 			// while(1){
 			// 	char ciphertext[BUFFER_SIZE];
 			// 	memset(ciphertext, '\0', BUFFER_SIZE * sizeof(char)); // null terminate the string

@@ -3,6 +3,7 @@
 // Class: CS 372
 // Project: Project 1
 #include <assert.h>
+#include <errno.h> 
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/types.h>
@@ -62,12 +63,16 @@ void connectSocket(int listenSocketFD, struct sockaddr_in *servAddr, int portNum
 int main(int argc, char **argv){
 	char client_name[MAX_NAME_LENGTH], server_name[MAX_NAME_LENGTH], client_input[BUFFER_SIZE], client_msg[BUFFER_SIZE], server_msg[BUFFER_SIZE];
 	char enc_client_msg[BUFFER_SIZE], key[KEY_SIZE];
-	int listenSocketFD, portNumber;	
+	int listenSocketFD, portNumber, max_sd, activity;	
 	pid_t spawnPid;	
 	bool isServer, isClient = true;				
 	struct sockaddr_in *servAddr;	
 	struct hostent *server;	
-
+	fd_set readFDs;
+	// Watch stdin (FD 0) to see when it has input
+	FD_ZERO(&readFDs); // Zero out the set of possible read file descriptors
+	FD_SET(0, &readFDs); // Mark only FD 0 as the one we want to pay attention to
+	
 	srand(time(NULL));
 
 	memset(client_name, '\0', MAX_NAME_LENGTH * sizeof(char)); // null terminate the string
@@ -98,27 +103,40 @@ int main(int argc, char **argv){
 	fgets(client_name, MAX_NAME_LENGTH, stdin);
 	client_name[strlen(client_name)-1] = '\0';
 	connectSocket(listenSocketFD, servAddr, portNumber);
+	FD_SET(listenSocketFD, &readFDs); // Mark only FD 0 as the one we want to pay attention to
+	max_sd = listenSocketFD;   
 	fillKeyTable(95, key);
 	sendData(listenSocketFD, &key, sizeof(key), 0, argv[0], 1); // send the key
 	// printf("key received\n");
 	// printf("%s\n", key);
 	if(spawnPid = fork() == 0){ // fork from this process - child process
 		while(1){
-			do{
+			activity = select( max_sd + 1 , &readFDs , NULL , NULL , NULL);   
+			if ((activity < 0) && (errno!=EINTR)){   
+    			printf("select error");   
+    		}   
+			if(FD_ISSET(listenSocketFD , &readFDs)){ 
 				recvData(listenSocketFD, &server_msg, sizeof(server_msg), MSG_WAITALL, argv[0], -1); // receives the ciphertext from otp_dec
-			}while(server_msg[0] == '\0'); // keep looping until we receive a message sent by the chat server
-			printf("\r%s\n", server_msg);
-			if(!strcmp(server_msg, "Server has closed the connection")){
-				break; // exit out of the loop to close the socket
+				printf("\r%s\n", server_msg);
+				if(!strcmp(server_msg, "Server has closed the connection")){
+					break; // exit out of the loop to close the socket
+				}
 			}
+			// do{
+			// 	recvData(listenSocketFD, &server_msg, sizeof(server_msg), MSG_WAITALL, argv[0], -1); // receives the ciphertext from otp_dec
+			// }while(server_msg[0] == '\0'); // keep looping until we receive a message sent by the chat server
+			// printf("\r%s\n", server_msg);
+			// if(!strcmp(server_msg, "Server has closed the connection")){
+			// 	break; // exit out of the loop to close the socket
+			// }
 		}
 	}else if(spawnPid == -1){ // did the fork fail?
 		perror("fork error");
 		exit(EXIT_FAILURE);
 	}
 	else{ // parent process
+		// fflush(stdout);
 		while(1){
-			fflush(stdout);
 			printf("%s> ", client_name);
 			fgets(client_input, BUFFER_SIZE, stdin);
 			client_input[strlen(client_input) - 1] = '\0';
@@ -139,6 +157,7 @@ int main(int argc, char **argv){
 			memset(server_msg, '\0', BUFFER_SIZE * sizeof(char));
 			memset(enc_client_msg, '\0', BUFFER_SIZE * sizeof(char));
 		}
+		
 	}
 
 	// while(1){
