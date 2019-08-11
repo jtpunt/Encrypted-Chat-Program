@@ -1,3 +1,5 @@
+
+
 // Name: Jonathan Perry
 #include <errno.h> 
 #include <stdio.h>
@@ -12,18 +14,46 @@
 #include <sys/wait.h>
 #include "chat_common.h"
 #define MAX_NAME_LENGTH 10
+#define KEY_SIZE 256
+struct sigaction SIGINT_action;
+
+void catchSIGINT(int signum){
+	char* message = "Caught SIGINT, exiting";
+	write(STDOUT_FILENO, message, 38);
+	// raise(SIGUSR2);
+	// sleep(5);
+	exit(0);
+}
 int main(int argc, char **argv){
-	int listenSocketFD, establishedConnectionFD, portNumber, activity, max_sd;	
-	char server_name[MAX_NAME_LENGTH], server_input[BUFFER_SIZE], server_msg[BUFFER_SIZE];	
+	int listenSocketFD, establishedConnectionFD, portNumber;	
+	char client_name[MAX_NAME_LENGTH], 
+		 server_name[MAX_NAME_LENGTH], 
+		 client_msg[BUFFER_SIZE], 
+		 server_input[BUFFER_SIZE],
+		 server_msg[BUFFER_SIZE],
+		 enc_client_msg[BUFFER_SIZE], 
+		 enc_server_msg[BUFFER_SIZE],
+		 key[KEY_SIZE];	
 	socklen_t sizeofClientInfo;		
 	struct sockaddr_in serverAddress, clientAddress;
-	pid_t spawnPid, spawnPid1;		
+	pid_t spawnPid;		
 	bool isClient, isServer = false;
 	size_t ciphertextSize, keySize;
-	fd_set readFDs;
-	// Watch stdin (FD 0) to see when it has input
-	FD_ZERO(&readFDs); // Zero out the set of possible read file descriptors
-	FD_SET(0, &readFDs); // Mark only FD 0 as the one we want to pay attention to
+
+	
+	SIGINT_action.sa_handler = catchSIGINT;
+	sigfillset(&SIGINT_action.sa_mask);
+	SIGINT_action.sa_flags = 0;
+	sigaction(SIGINT, &SIGINT_action, NULL);
+
+	memset(client_name, '\0', MAX_NAME_LENGTH * sizeof(char)); // null terminate the string
+	memset(server_name, '\0', MAX_NAME_LENGTH * sizeof(char)); 
+	memset(client_msg, '\0', BUFFER_SIZE * sizeof(char));
+	memset(server_input, '\0', BUFFER_SIZE * sizeof(char));
+	memset(server_msg, '\0', BUFFER_SIZE * sizeof(char));
+	memset(key, '\0', KEY_SIZE * sizeof(char));
+	memset(enc_client_msg, '\0', BUFFER_SIZE * sizeof(char));
+	memset(enc_server_msg, '\0', BUFFER_SIZE * sizeof(char));
 	// Check usage & args
 	if (argc != 2){
 		fprintf(stderr, "Usage: %s listening_port\n", argv[0]);
@@ -63,68 +93,31 @@ int main(int argc, char **argv){
 		if (establishedConnectionFD < 0){
 			fprintf(stderr, "ERROR on accept\n");
 		}
-		FD_SET(establishedConnectionFD, &readFDs); // Mark only FD 0 as the one we want to pay attention to
-		max_sd = establishedConnectionFD;   
 		spawnPid = fork(); 
 		if (spawnPid == 0){	// child process
-			char plaintext[BUFFER_SIZE];
-			memset(plaintext, '\0', BUFFER_SIZE * sizeof(char)); // null terminate the string
-			char key[BUFFER_SIZE];
-			memset(key, '\0', BUFFER_SIZE * sizeof(char));
 			recvData(establishedConnectionFD, &key, sizeof(key), 0, argv[0], -1); // receives the key from otp_dec
 			printf("key%s\n", key);
-			char ciphertext[BUFFER_SIZE];
-			if(spawnPid1 = fork() == 0){ // fork from this process - child process
-				while(1){
-					activity = select( max_sd + 1 , &readFDs , NULL , NULL , NULL); 
-					memset(ciphertext, '\0', BUFFER_SIZE * sizeof(char)); // null terminate the string  
-					if ((activity < 0) && (errno!=EINTR)){   
-		    			printf("select error");   
-		    		}   
-					if(FD_ISSET(establishedConnectionFD , &readFDs)){ 
-						recvData(establishedConnectionFD, &ciphertext, sizeof(ciphertext), MSG_WAITALL, argv[0], -1); // receives the ciphertext from otp_dec
-						decrypt(ciphertext, key, plaintext); // convert the ciphertext to plaintext
-						printf("\r%s\n", plaintext);
-					}
-					// printf("new fork..\n");
-					// fflush(stdout);
-					// memset(ciphertext, '\0', BUFFER_SIZE * sizeof(char)); // null terminate the string
-					// do{
-					// 	recvData(establishedConnectionFD, &ciphertext, sizeof(ciphertext), MSG_WAITALL, argv[0], -1); // receives the ciphertext from otp_dec
-					// }while(ciphertext[0] == '\0'); // keep looping until we receive a message sent by the chat server
-					// decrypt(ciphertext, key, plaintext); // convert the ciphertext to plaintext
-					// printf("\r%s\n", plaintext);
-				}
-			}else if(spawnPid1 == -1){ // did the fork fail?
-				perror("fork error");
-				exit(EXIT_FAILURE);
-			}
-			else{ // parent process
-				while(1){
-					printf("%s> ", server_name);
-					fgets(server_input, BUFFER_SIZE, stdin);
-					server_input[strlen(server_input) - 1] = '\0';
-					strcpy(server_msg, server_name); // 'client_name'
-					strcat(server_msg, "> "); // 'cleint_name> '
-					strcat(server_msg, server_input); // 'client_name> client_input'
-					sendData(establishedConnectionFD, &server_msg, sizeof(server_msg), 0, argv[0], -1); // sends the plaintext back to otp_dec
-				}
-			}
-			// }
-			// while(1){
-			// 	char ciphertext[BUFFER_SIZE];
-			// 	memset(ciphertext, '\0', BUFFER_SIZE * sizeof(char)); // null terminate the string
-			// 	do{
-			// 		recvData(establishedConnectionFD, &ciphertext, sizeof(ciphertext), MSG_WAITALL, argv[0], -1); // receives the ciphertext from otp_dec
-			// 	}while(ciphertext[0] == '\0'); // keep looping until we receive a message sent by the chat server
-			// 	printf("ciphertext: %s\n", ciphertext);
-	
-			// 	decrypt(ciphertext, key, plaintext); // convert the ciphertext to plaintext
-			// 	printf("plaintext: %s\n", plaintext);
-			// 	memset(ciphertext, '\0', BUFFER_SIZE * sizeof(char)); // null terminate the string
-			// }
-			// sendData(establishedConnectionFD, &plaintext, sizeof(plaintext), 0, argv[0], -1); // sends the plaintext back to otp_dec
+			while(1){
+				do{
+					recvData(establishedConnectionFD, &enc_client_msg, sizeof(enc_client_msg), MSG_WAITALL, argv[0], -1); // receives the ciphertext from otp_dec
+				}while(enc_client_msg[0] == '\0'); // keep looping until we receive a message sent by the chat server
 
+				decrypt(enc_client_msg, key, client_msg); // convert the ciphertext to plaintext
+				printf("\r%s\n", client_msg);
+				printf("%s> ", server_name);
+				fgets(server_input, BUFFER_SIZE, stdin);
+				server_input[strlen(server_input) - 1] = '\0';
+				strcpy(server_msg, server_name); // 'client_name'
+				strcat(server_msg, "> "); // 'cleint_name> '
+				strcat(server_msg, server_input); // 'client_name> client_input'
+				encrypt(server_msg, key, enc_server_msg);
+				sendData(establishedConnectionFD, &enc_server_msg, sizeof(enc_server_msg), 0, argv[0], -1); // sends the plaintext back to otp_dec
+				memset(server_input, '\0', BUFFER_SIZE * sizeof(char)); // null terminate the string
+				memset(client_msg, '\0', BUFFER_SIZE * sizeof(char));
+				memset(server_msg, '\0', BUFFER_SIZE * sizeof(char));
+				memset(enc_client_msg, '\0', BUFFER_SIZE * sizeof(char));
+				memset(enc_server_msg, '\0', BUFFER_SIZE * sizeof(char));
+			}
 			close(establishedConnectionFD); // Close the existing socket which is connected to the client
 			establishedConnectionFD = -1;
 			exit(EXIT_SUCCESS);
