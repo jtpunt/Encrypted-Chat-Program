@@ -131,8 +131,10 @@ int main(int argc, char **argv){
 		strcat(client_msg, "> "); // 'cleint_name> '
 		strcat(client_msg, client_input); // 'client_name> client_input'
 		if(!strcmp(client_input, "\\quit")){ // Did the client user enter in '\quit'?
-			char str[] = "Exiting";
-			sendData(listenSocketFD, &str, sizeof(str), 0, argv[0], 1); // message the chat server so it closes its socket with the client
+			char str[] =  "Client has closed the connection";
+			char enc_str[strlen(str)];
+			encrypt(str, key, enc_str);
+			sendData(listenSocketFD, &enc_str, sizeof(enc_str), 0, argv[0], 1); // message the chat server so it closes its socket with the client
 			printf("Exiting..\n");
 			break; // close the 
 		}

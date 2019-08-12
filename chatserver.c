@@ -96,7 +96,7 @@ int main(int argc, char **argv){
 		spawnPid = fork(); 
 		if (spawnPid == 0){	// child process
 			recvData(establishedConnectionFD, &key, sizeof(key), 0, argv[0], -1); // receives the key from otp_dec
-			printf("key%s\n", key);
+			printf("key: %s\n", key);
 			while(1){
 				do{
 					recvData(establishedConnectionFD, &enc_client_msg, sizeof(enc_client_msg), MSG_WAITALL, argv[0], -1); // receives the ciphertext from otp_dec
@@ -104,9 +104,20 @@ int main(int argc, char **argv){
 
 				decrypt(enc_client_msg, key, client_msg); // convert the ciphertext to plaintext
 				printf("\r%s\n", client_msg);
+				if(!strcmp(client_msg, "Client has closed the connection")){
+					break;
+				}
 				printf("%s> ", server_name);
 				fgets(server_input, BUFFER_SIZE, stdin);
 				server_input[strlen(server_input) - 1] = '\0';
+				if(!strcmp(server_input, "\\quit")){ // Did the server user enter in '\quit'?
+					char str[] = "Server has closed the connection";
+					char enc_str[strlen(str)];
+					encrypt(str, key, enc_str);
+					sendData(establishedConnectionFD, &enc_str, sizeof(enc_str), 0, argv[0], 1); // message the chat server so it closes its socket with the client
+					printf("Exiting..\n");
+					break; // close the 
+				}
 				strcpy(server_msg, server_name); // 'client_name'
 				strcat(server_msg, "> "); // 'cleint_name> '
 				strcat(server_msg, server_input); // 'client_name> client_input'
